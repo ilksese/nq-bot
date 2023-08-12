@@ -5,7 +5,7 @@ from urllib.parse import urljoin, quote
 
 import aiohttp
 from bs4 import BeautifulSoup
-from nonebot import on_regex, logger
+from nonebot import on_regex, logger, get_driver
 from nonebot.matcher import Matcher
 from nonebot.exception import MatcherException
 from nonebot.params import ArgPlainText
@@ -14,14 +14,15 @@ from nonebot.adapters.onebot.v11 import MessageSegment, Bot, GroupMessageEvent
 from nonebot.typing import T_State
 
 from utils import send_forward_msg_group
+from config import Config
 
+config = Config.parse_obj(get_driver().config)
 
 __HELP__ = {
     "bt": {
         "__HELP__": "bt [keyword]"
     }
 }
-
 
 baseUrl = "https://btbtt18.com/"
 
@@ -45,7 +46,7 @@ bt_matcher = on_regex(pattern=r"^bt", priority=10, block=True)
 
 async def search(keyword: str) -> List[BtItem]:
     async with aiohttp.ClientSession() as client:
-        async with client.get(f"{baseUrl}search-index-keyword-{quote(keyword)}.htm") as resp:
+        async with client.get(f"{baseUrl}search-index-keyword-{quote(keyword)}.htm", proxy=config.http_proxy) as resp:
             results: List[BtItem] = []
             try:
                 html_str = await resp.text()
@@ -78,7 +79,7 @@ async def search(keyword: str) -> List[BtItem]:
 async def into_detail_page(url: str) -> List[Attach]:
     # url = "https://btbtt18.com/thread-index-fid-1183-tid-4577186.htm"
     async with aiohttp.ClientSession() as client:
-        async with client.get(url) as resp:
+        async with client.get(url, proxy=config.http_proxy) as resp:
             soup = BeautifulSoup(await resp.content.read(), "lxml")
             attach_list_dom = soup.select(".attachlist tr td:first-child a")
             # op(attach_list_dom)
@@ -95,7 +96,7 @@ async def into_detail_page(url: str) -> List[Attach]:
 async def download_torrent(url: str):
     # url = "https://btbtt18.com/attach-dialog-fid-1183-aid-5278223.htm"
     async with aiohttp.ClientSession() as client:
-        async with client.get(url) as resp:
+        async with client.get(url, proxy=config.http_proxy) as resp:
             soup = BeautifulSoup(await resp.content.read(), "lxml")
             # attach-download-fid-1183-aid-5278223.htm
             file_name = soup.select_one("dl > dd:nth-of-type(1)").text
@@ -109,7 +110,7 @@ async def download_torrent(url: str):
             #                 f.write(chunk)  # 将数据块写入文件
 
             # 异步模式
-            async with client.get(urljoin(baseUrl, download_link)) as file_resp:
+            async with client.get(urljoin(baseUrl, download_link), proxy=config.http_proxy) as file_resp:
                 with open(f"data/torrent/{file_name}", 'wb') as fd:
                     # iter_content：一块一块的遍历要下载的内容
                     # iter_lines：一行一行的遍历要下载的内容

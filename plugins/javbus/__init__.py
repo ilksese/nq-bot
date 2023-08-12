@@ -6,12 +6,15 @@ import urllib.parse
 from pydantic import BaseModel
 from bs4 import BeautifulSoup
 from pygtrans import Translate, Null
-from nonebot import on_regex, logger
+from nonebot import on_regex, logger, get_driver
 from nonebot.matcher import Matcher
 from nonebot.exception import MatcherException, FinishedException
 from nonebot.adapters.onebot.v11 import Bot, GroupMessageEvent
 
 from utils import send_forward_msg_group
+from config import Config
+
+config = Config.parse_obj(get_driver().config)
 
 kc = on_regex(pattern=r"^kc", priority=10, block=True)
 client = Translate()
@@ -89,7 +92,11 @@ class Javbus:
             response = requests.get(
                 cls.action.format(urllib.parse.quote(search_value), page),
                 cookies=cls.cookies,
-                headers=cls.headers
+                headers=cls.headers,
+                proxies={
+                    "http": config.http_proxy,
+                    "https": config.https_proxy
+                }
             )
             soup = BeautifulSoup(response.text, "html.parser")
             movie_boxs = soup.find_all(class_="movie-box")

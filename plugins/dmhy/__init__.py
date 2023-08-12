@@ -2,7 +2,7 @@ import re
 
 import requests
 from bs4 import BeautifulSoup
-from nonebot import on_regex, logger
+from nonebot import on_regex, logger, get_driver
 from nonebot.matcher import Matcher
 from nonebot.exception import MatcherException
 from nonebot.params import ArgPlainText
@@ -11,6 +11,10 @@ from nonebot.adapters.onebot.v11 import MessageSegment, Bot, GroupMessageEvent
 from nonebot.typing import T_State
 
 from utils import send_forward_msg_group
+from config import Config
+
+config = Config.parse_obj(get_driver().config)
+op(get_driver().config)
 
 __HELP__ = {
     "zy": {
@@ -68,7 +72,10 @@ async def got_zy(bot: Bot, event: GroupMessageEvent, keyword=ArgPlainText("keywo
     # 发起请求，在动漫花园搜索
     await zy.send(f"正在搜索关于{keyword}的{zy_types.get(sort_id)}内容")
     api = f"https://dmhy.org/topics/rss/rss.xml?keyword={keyword}&sort_id={sort_id}&team_id=0&order=date-desc"
-    resp = requests.get(api)
+    resp = requests.get(api, proxies={
+        "http": config.http_proxy,
+        "https": config.https_proxy
+    })
     rss_xml = BeautifulSoup(resp.content, "xml")
     # 限制解析数量，加快速度
     item_list = rss_xml.find_all("item", limit=3)
